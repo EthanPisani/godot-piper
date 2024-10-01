@@ -4,11 +4,69 @@
 #include "godot_cpp/classes/label.hpp"
 #include "godot_cpp/core/class_db.hpp"
 #include "godot_cpp/variant/utility_functions.hpp"
-
+#include <spdlog/sinks/stdout_color_sinks.h>
+#include <spdlog/spdlog.h>
 #include "Example.h"
+#include "piper.hpp"
 
 // Used to mark unused parameters to indicate intent and suppress warnings.
 #define UNUSED( expr ) (void)( expr )
+using json = nlohmann::json;
+
+using namespace std;
+enum OutputType { OUTPUT_FILE, OUTPUT_DIRECTORY, OUTPUT_STDOUT, OUTPUT_RAW };
+
+struct RunConfig {
+  // Path to .onnx voice file
+  filesystem::path modelPath;
+
+  // Path to JSON voice config file
+  filesystem::path modelConfigPath;
+
+  // Type of output to produce.
+  // Default is to write a WAV file in the current directory.
+  OutputType outputType = OUTPUT_DIRECTORY;
+
+  // Path for output
+  optional<filesystem::path> outputPath = filesystem::path(".");
+
+  // Numerical id of the default speaker (multi-speaker voices)
+  optional<piper::SpeakerId> speakerId;
+
+  // Amount of noise to add during audio generation
+  optional<float> noiseScale;
+
+  // Speed of speaking (1 = normal, < 1 is faster, > 1 is slower)
+  optional<float> lengthScale;
+
+  // Variation in phoneme lengths
+  optional<float> noiseW;
+
+  // Seconds of silence to add after each sentence
+  optional<float> sentenceSilenceSeconds;
+
+  // Path to espeak-ng data directory (default is next to piper executable)
+  optional<filesystem::path> eSpeakDataPath;
+
+  // Path to libtashkeel ort model
+  // https://github.com/mush42/libtashkeel/
+  optional<filesystem::path> tashkeelModelPath;
+
+  // stdin input is lines of JSON instead of text with format:
+  // {
+  //   "text": str,               (required)
+  //   "speaker_id": int,         (optional)
+  //   "speaker": str,            (optional)
+  //   "output_file": str,        (optional)
+  // }
+  bool jsonInput = false;
+
+  // Seconds of extra silence to insert after a single phoneme
+  optional<std::map<piper::Phoneme, float>> phonemeSilenceSeconds;
+
+  // true to use CUDA execution provider
+  bool useCuda = false;
+};
 
 namespace
 {
@@ -138,16 +196,59 @@ Example::~Example()
     godot::UtilityFunctions::print( "Destructor." );
 }
 
+void Example::TTSText( const godot::String &inText )
+{
+    godot::UtilityFunctions::print( "  TTS Text called with: ", inText );
+}
+
 // Methods.
 void Example::simpleFunc()
 {
     godot::UtilityFunctions::print( "  Simple func called." );
+    RunConfig runConfig;
+    // runConfig.eSpeakDataPath = "/usr/local/share/espeak-ng-data";
+    runConfig.modelConfigPath = "/home/redzuzu/Documents/programming/python/project-phoenix/piper/src/python/output/rusty-high-op.onnx.json";
+    runConfig.modelPath = "/home/redzuzu/Documents/programming/python/project-phoenix/piper/src/python/output/rusty-high-op.onnx";
+    runConfig.outputType = OUTPUT_FILE;
+    runConfig.useCuda = false;
+    runConfig.speakerId = 0;
+    // Verify model file exists
+    ifstream modelFile(runConfig.modelPath.c_str(), ios::binary);
+    if (!modelFile.good()) {
+        throw runtime_error("Model file doesn't exist");
+    }
+
+    // Verify model config exists
+    ifstream modelConfigFile(runConfig.modelConfigPath.c_str());
+    if (!modelConfigFile.good()) {
+        throw runtime_error("Model config doesn't exist");
+    }
+    
+    godot::UtilityFunctions::print( godot::String(runConfig.modelPath.c_str()) );
+    godot::UtilityFunctions::print( godot::String(runConfig.modelConfigPath.c_str()) );
+    piper::PiperConfig piperConfig;
+    piper::Voice voice;
+    std::optional<piper::SpeakerId> optionalSpeakerId;
+    piper::loadVoice(piperConfig, runConfig.modelPath.string(),
+            runConfig.modelConfigPath.string(), voice, runConfig.speakerId,
+            runConfig.useCuda);
+    piperConfig.eSpeakDataPath = "/usr/local/share/espeak-ng-data/phontab";
+    piper::initialize(piperConfig);
+    std::string text = "Hello, world!";
+    //print text
+    godot::UtilityFunctions::print( godot::String(text.c_str()) );
+
+    // Output audio to a WAV file
+    std::ofstream audioFile("../../output.wav", std::ios::binary);
+    piper::SynthesisResult result;
+    // print espeak path
+    
+    godot::UtilityFunctions::print( godot::String(piperConfig.eSpeakDataPath.c_str()) );
+    piper::textToWavFile(piperConfig, voice, text, audioFile, result);
+    godot::UtilityFunctions::print( "  Simple func finished." );
 }
 
-void Example::simpleConstFunc() const
-{
-    godot::UtilityFunctions::print( "  Simple const func called." );
-}
+
 
 godot::String Example::returnSomething( const godot::String &inBase )
 {
@@ -591,9 +692,9 @@ bool Example::_has_point( const godot::Vector2 &inPoint ) const
 void Example::_bind_methods()
 {
     // Methods.
+    godot::ClassDB::bind_method( godot::D_METHOD( "TTSText", "text" ), &Example::TTSText );
     godot::ClassDB::bind_method( godot::D_METHOD( "simple_func" ), &Example::simpleFunc );
-    godot::ClassDB::bind_method( godot::D_METHOD( "simple_const_func" ),
-                                 &Example::simpleConstFunc );
+
     godot::ClassDB::bind_method( godot::D_METHOD( "return_something" ), &Example::returnSomething );
     godot::ClassDB::bind_method( godot::D_METHOD( "return_something_const" ),
                                  &Example::returnSomethingConst );

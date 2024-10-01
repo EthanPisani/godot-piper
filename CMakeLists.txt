@@ -135,8 +135,38 @@ set_target_properties( godot-cpp
     PROPERTIES
         CXX_VISIBILITY_PRESET hidden    # visibility needs to be the same as the main library
 )
+add_subdirectory( extern/piper)
 
+set_target_properties( piper
+    PROPERTIES
+        CXX_VISIBILITY_PRESET hidden    # visibility needs to be the same as the main library
+)
 target_link_libraries( ${PROJECT_NAME}
     PRIVATE
         godot-cpp
+        piper
+        espeak-ng
+        onnxruntime
+)
+# plugin.addIncludePath(b.path("piper/build/fi/include"));
+# plugin.addIncludePath(b.path("piper/build/s/src/spdlog_external/include"));
+# plugin.addIncludePath(b.path("piper/build/p/src/piper_phonemize_external/src"));
+# plugin.addIncludePath(b.path("piper/build/pi/include"));
+# plugin.addLibraryPath(b.path("piper/build"));
+# plugin.addLibraryPath(b.path("piper/build/fi/lib"));
+# plugin.addLibraryPath(b.path("piper/build/s/src/spdlog_external/lib"));
+# plugin.addLibraryPath(b.path("piper/build/pi/lib"));
+# plugin.addLibraryPath(b.path("piper/build/pi"));
+target_include_directories( ${PROJECT_NAME}
+    PRIVATE
+        extern/piper/src/cpp
+        extern/piper/build/fi/include
+        extern/piper/build/s/src/spdlog_external/include
+        extern/piper/build/p/src/piper_phonemize_external/src
+        extern/piper/build/pi/include
+        extern/piper/build
+        extern/piper/build/fi/lib
+        extern/piper/build/s/src/spdlog_external/lib
+        extern/piper/build/pi/lib
+        extern/piper/build/pi
 )

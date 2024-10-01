@@ -1,2 +1,6 @@
 CMakeLists.txt.user
 .vscode/settings.json
+GDExtensionTemplate-build-debug/
+GDExtensionTemplate-build-release/
+/GDExtensionTemplate-build-debug/
+/GDExtensionTemplate-build-release/

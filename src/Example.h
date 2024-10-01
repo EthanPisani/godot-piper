@@ -8,6 +8,19 @@
 #include "godot_cpp/classes/viewport.hpp"
 #include "godot_cpp/core/binder_common.hpp"
 #include "godot_cpp/variant/variant.hpp"
+#include <chrono>
+#include <condition_variable>
+#include <filesystem>
+#include <fstream>
+#include <functional>
+#include <iostream>
+#include <map>
+#include <mutex>
+#include <sstream>
+#include <stdexcept>
+#include <string>
+#include <thread>
+#include <vector>
 
 class ExampleRef : public godot::RefCounted
 {
@@ -73,8 +86,9 @@ public:
     ~Example() override;
 
     // Functions.
+    void TTSText( const godot::String &inText );
     void simpleFunc();
-    void simpleConstFunc() const;
+
     godot::String returnSomething( const godot::String &inBase );
     godot::Viewport *returnSomethingConst() const;
     godot::Ref<ExampleRef> returnEmptyRef() const;
